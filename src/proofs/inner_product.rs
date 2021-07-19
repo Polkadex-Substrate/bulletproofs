@@ -21,11 +21,13 @@ use curv::cryptographic_primitives::hashing::hash_sha256::HSha256;
 use curv::cryptographic_primitives::hashing::traits::*;
 use curv::elliptic::curves::traits::*;
 use curv::BigInt;
+pub use serde::{Serialize,Deserialize};
 
-type GE = curv::elliptic::curves::secp256_k1::GE;
-type FE = curv::elliptic::curves::secp256_k1::FE;
+type GE = curv::elliptic::curves::secp256_k1_wasm::GE;
+type FE = curv::elliptic::curves::secp256_k1_wasm::FE;
 
 use Errors::{self, InnerProductError};
+use std::prelude::v1::*;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct InnerProductArg {
@@ -325,7 +327,7 @@ impl InnerProductArg {
         let tot_len = points.len();
 
         let expect_P = (0..tot_len)
-            .map(|i| points[i] * &ECScalar::from(&scalars[i]))
+            .map(|i| points[i].clone() * &ECScalar::from(&scalars[i]))
             .fold(ux_c, |acc, x| acc + x as GE);
 
         if *P == expect_P {

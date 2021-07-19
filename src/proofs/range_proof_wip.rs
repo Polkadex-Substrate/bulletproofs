@@ -29,9 +29,11 @@ use curv::cryptographic_primitives::hashing::hash_sha512::HSha512;
 use curv::cryptographic_primitives::hashing::traits::*;
 use curv::elliptic::curves::traits::*;
 use curv::BigInt;
+use std::prelude::v1::*;
+pub use serde::{Serialize,Deserialize};
 
-type GE = curv::elliptic::curves::secp256_k1::GE;
-type FE = curv::elliptic::curves::secp256_k1::FE;
+type GE = curv::elliptic::curves::secp256_k1_wasm::GE;
+type FE = curv::elliptic::curves::secp256_k1_wasm::FE;
 
 use itertools::iterate;
 use proofs::range_proof::generate_random_point;
@@ -144,7 +146,7 @@ impl RangeProofWIP {
 
         // let mut index: usize = 0;
         let alpha: FE = ECScalar::new_random();
-        let mut A = H * &alpha;
+        let mut A = H.clone() * &alpha;
         A = g_vec.iter().zip(secret_bits.clone()).fold(A, |acc, x| {
             if x.1 {
                 acc.add_point(&x.0.get_element())
@@ -240,10 +242,10 @@ impl RangeProofWIP {
         let mut A_hat_bases: Vec<GE> = Vec::with_capacity(2 * nm + 2);
         A_hat_bases.extend_from_slice(&g_vec);
         A_hat_bases.extend_from_slice(&h_vec);
-        A_hat_bases.extend_from_slice(&[G, H]);
+        A_hat_bases.extend_from_slice(&[G.clone(), H.clone()]);
 
         let A_hat = (0..(2 * nm + 2))
-            .map(|i| A_hat_bases[i] * &ECScalar::from(&A_hat_scalars[i]))
+            .map(|i| A_hat_bases[i].clone() * &ECScalar::from(&A_hat_scalars[i]))
             .fold(A.clone(), |acc, x| acc + x as GE);
 
         // compute aL_hat, aR_hat, alpha_hat
@@ -348,9 +350,9 @@ impl RangeProofWIP {
         let sum_com = (0..num_of_proofs)
             .map(|i| {
                 let y_pow_z2i = BigInt::mod_mul(&y_pow, &vec_z2m[i].clone(), &order);
-                ped_com[i] * &ECScalar::from(&y_pow_z2i)
+                ped_com[i].clone() * &ECScalar::from(&y_pow_z2i)
             })
-            .fold(self.A, |acc, x| acc + x as GE);
+            .fold(self.A.clone(), |acc, x| acc + x as GE);
 
         // compute A_hat
         let mut A_hat_scalars: Vec<BigInt> = Vec::with_capacity(2 * nm + 2);
@@ -361,10 +363,10 @@ impl RangeProofWIP {
         let mut A_hat_bases: Vec<GE> = Vec::with_capacity(2 * nm + 2);
         A_hat_bases.extend_from_slice(&g_vec);
         A_hat_bases.extend_from_slice(&h_vec);
-        A_hat_bases.extend_from_slice(&[G]);
+        A_hat_bases.extend_from_slice(&[G.clone()]);
 
         let A_hat = (0..(2 * nm + 1))
-            .map(|i| A_hat_bases[i] * &ECScalar::from(&A_hat_scalars[i]))
+            .map(|i| A_hat_bases[i].clone() * &ECScalar::from(&A_hat_scalars[i]))
             .fold(sum_com.clone(), |acc, x| acc + x as GE);
 
         let verify = self
@@ -383,7 +385,7 @@ impl RangeProofWIP {
     ///
     pub fn aggregated_verify(&self, stmt: StatementRP, ped_com: &[GE]) -> Result<(), Errors> {
         let wip = &self.weighted_inner_product_proof;
-        let P = self.A;
+        let P = self.A.clone();
 
         let n = stmt.bit_length;
         let m = ped_com.len();
@@ -578,17 +580,17 @@ impl RangeProofWIP {
         let mut points: Vec<GE> = Vec::with_capacity(2 * nm + 2 * lg_nm + m + 5);
         points.extend_from_slice(G);
         points.extend_from_slice(H);
-        points.push(*g);
+        points.push(g.clone());
         points.extend_from_slice(&wip.L);
         points.extend_from_slice(&wip.R);
         points.push(P);
         points.extend_from_slice(&ped_com);
-        points.push(wip.a_tag);
+        points.push(wip.a_tag.clone());
 
         let h_delta_prime = h * &ECScalar::from(&wip.delta_prime);
         let tot_len = points.len();
         let lhs = (0..tot_len)
-            .map(|i| points[i] * &ECScalar::from(&scalars[i]))
+            .map(|i| points[i].clone() * &ECScalar::from(&scalars[i]))
             .fold(h_delta_prime, |acc, x| acc + x as GE);
 
         if lhs == wip.b_tag {
@@ -604,6 +606,7 @@ mod tests {
     use curv::arithmetic::traits::*;
     use curv::elliptic::curves::traits::*;
     use curv::BigInt;
+    use std::prelude::v1::*;
 
     type GE = curv::elliptic::curves::secp256_k1::GE;
     type FE = curv::elliptic::curves::secp256_k1::FE;

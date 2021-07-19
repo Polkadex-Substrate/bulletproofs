@@ -27,9 +27,11 @@ use curv::cryptographic_primitives::hashing::hash_sha256::HSha256;
 use curv::cryptographic_primitives::hashing::traits::*;
 use curv::elliptic::curves::traits::*;
 use curv::BigInt;
+use std::prelude::v1::*;
+pub use serde::{Serialize,Deserialize};
 
-type GE = curv::elliptic::curves::secp256_k1::GE;
-type FE = curv::elliptic::curves::secp256_k1::FE;
+type GE = curv::elliptic::curves::secp256_k1_wasm::GE;
+type FE = curv::elliptic::curves::secp256_k1_wasm::FE;
 
 use itertools::iterate;
 
@@ -354,8 +356,8 @@ impl WeightedInnerProdArg {
         // left hand side of verification
         // LHS = e^2*P + e*A + B
         let P_e2 = P * &e_sq_fe;
-        let Ae = self.a_tag * &e;
-        let left = P_e2 + Ae + self.b_tag;
+        let Ae = self.a_tag.clone() * &e;
+        let left = P_e2 + Ae + self.b_tag.clone();
 
         // RHS = (er')*G + (es')*H + (r's'y)*g + (delta')*h
         let er_prime = BigInt::mod_mul(&e_bn, &self.r_prime, &order);
@@ -493,17 +495,17 @@ impl WeightedInnerProdArg {
         points.extend_from_slice(hi_tag);
         points.extend_from_slice(&self.L);
         points.extend_from_slice(&self.R);
-        points.push(*g);
+        points.push(g.clone());
 
         let h_delta_prime = h * &ECScalar::from(&self.delta_prime);
         let tot_len = points.len();
         let lhs = (0..tot_len)
-            .map(|i| points[i] * &ECScalar::from(&scalars[i]))
+            .map(|i| points[i].clone() * &ECScalar::from(&scalars[i]))
             .fold(h_delta_prime, |acc, x| acc + x as GE);
 
-        let Ae = self.a_tag * &ECScalar::from(&e_bn);
+        let Ae = self.a_tag.clone() * &ECScalar::from(&e_bn);
         let Pe_sq = P * &ECScalar::from(&e_sq_bn);
-        let rhs = Pe_sq + Ae + self.b_tag;
+        let rhs = Pe_sq + Ae + self.b_tag.clone();
 
         if lhs == rhs {
             Ok(())
@@ -542,6 +544,7 @@ mod tests {
     use curv::cryptographic_primitives::hashing::traits::*;
     use curv::elliptic::curves::traits::*;
     use curv::BigInt;
+    use std::prelude::v1::*;
 
     type GE = curv::elliptic::curves::secp256_k1::GE;
     type FE = curv::elliptic::curves::secp256_k1::FE;
